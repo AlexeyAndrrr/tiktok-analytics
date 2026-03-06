@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TikTok Analytics</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg: #0f0f1a;
+            --card: #1a1a2e;
+            --card-hover: #222240;
+            --pink: #fe2c55;
+            --cyan: #25f4ee;
+            --text: #e8e8e8;
+            --muted: #888;
+            --green: #4caf50;
+            --red: #f44336;
+            --yellow: #ffc107;
+            --border: #2a2a40;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background: var(--card);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .navbar h1 {
+            font-size: 1.5em;
+            background: linear-gradient(135deg, var(--pink), var(--cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .navbar-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 8px 20px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--pink);
+            color: white;
+        }
+        .btn-primary:hover { background: #e0254a; }
+
+        .btn-secondary {
+            background: var(--card);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+        .btn-secondary:hover { background: var(--card-hover); }
+
+        .btn-danger {
+            background: transparent;
+            color: var(--muted);
+            border: 1px solid var(--border);
+        }
+        .btn-danger:hover { color: var(--red); border-color: var(--red); }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid var(--border);
+            transition: border-color 0.2s;
+        }
+        .stat-card:hover { border-color: var(--pink); }
+
+        .stat-value {
+            font-size: 1.8em;
+            font-weight: 700;
+            color: var(--pink);
+            margin-bottom: 4px;
+        }
+        .stat-value.cyan { color: var(--cyan); }
+
+        .stat-label {
+            color: var(--muted);
+            font-size: 0.85em;
+        }
+
+        .stat-change {
+            font-size: 0.8em;
+            margin-top: 4px;
+        }
+        .stat-change.positive { color: var(--green); }
+        .stat-change.negative { color: var(--red); }
+
+        .charts-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .chart-card {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid var(--border);
+        }
+
+        .chart-card h3 {
+            margin-bottom: 12px;
+            font-size: 1em;
+            color: var(--muted);
+        }
+
+        .chart-container {
+            position: relative;
+            height: 250px;
+        }
+
+        .table-card {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid var(--border);
+            margin-bottom: 24px;
+        }
+
+        .table-card h3 {
+            margin-bottom: 16px;
+            font-size: 1em;
+            color: var(--muted);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            text-align: left;
+            color: var(--muted);
+            font-size: 0.8em;
+            text-transform: uppercase;
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        td {
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.9em;
+        }
+
+        tr:hover td { background: var(--card-hover); }
+
+        .status-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75em;
+            font-weight: 600;
+        }
+        .status-success { background: rgba(76,175,80,0.2); color: var(--green); }
+        .status-failed { background: rgba(244,67,54,0.2); color: var(--red); }
+        .status-running { background: rgba(37,244,238,0.2); color: var(--cyan); }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--muted);
+        }
+        .empty-state h2 { margin-bottom: 12px; color: var(--text); }
+
+        .loading { opacity: 0.5; pointer-events: none; }
+
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--muted);
+            border-top-color: var(--pink);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        @media (max-width: 768px) {
+            .charts-row { grid-template-columns: 1fr; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .navbar { padding: 12px 16px; }
+            .container { padding: 16px; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <h1>TikTok Analytics</h1>
+        <div class="navbar-actions">
+            <span id="auth-status" style="color: var(--muted); font-size: 0.9em;"></span>
+            <button class="btn btn-primary" onclick="collectData()" id="collect-btn">Collect Data</button>
+            <button class="btn btn-danger" onclick="logout()" id="logout-btn" style="display:none;">Logout</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Empty state -->
+        <div id="empty-state" class="empty-state" style="display:none;">
+            <h2>Welcome to TikTok Analytics</h2>
+            <p>Connect your TikTok account to get started.</p>
+            <br>
+            <a href="/api/auth/login" class="btn btn-primary">Connect TikTok Account</a>
+        </div>
+
+        <!-- Dashboard content -->
+        <div id="dashboard" style="display:none;">
+            <!-- Stats cards -->
+            <div class="stats-grid" id="stats-grid"></div>
+
+            <!-- Charts -->
+            <div class="charts-row">
+                <div class="chart-card">
+                    <h3>Follower Growth</h3>
+                    <div class="chart-container">
+                        <canvas id="follower-chart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <h3>Likes Growth</h3>
+                    <div class="chart-container">
+                        <canvas id="likes-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top Videos -->
+            <div class="table-card">
+                <h3>Top Videos</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Title</th>
+                            <th>Views</th>
+                            <th>Likes</th>
+                            <th>Comments</th>
+                            <th>Shares</th>
+                            <th>Eng. Rate</th>
+                        </tr>
+                    </thead>
+                    <tbody id="videos-table"></tbody>
+                </table>
+            </div>
+
+            <!-- Collection History -->
+            <div class="table-card">
+                <h3>Collection History</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th>Videos</th>
+                            <th>Duration</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-table"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let followerChart = null;
+        let likesChart = null;
+
+        // ── Init ──
+        async function init() {
+            const auth = await fetchJSON('/api/auth/status');
+            if (!auth.authenticated) {
+                document.getElementById('empty-state').style.display = 'block';
+                document.getElementById('dashboard').style.display = 'none';
+                return;
+            }
+
+            document.getElementById('empty-state').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'block';
+            document.getElementById('logout-btn').style.display = 'inline-block';
+            document.getElementById('auth-status').textContent = `Connected (${auth.open_id.slice(0, 8)}...)`;
+
+            loadDashboard();
+        }
+
+        async function loadDashboard() {
+            await Promise.all([
+                loadSummary(),
+                loadFollowerChart(),
+                loadLikesChart(),
+                loadTopVideos(),
+                loadHistory(),
+            ]);
+        }
+
+        // ── Summary stats ──
+        async function loadSummary() {
+            const stats = await fetchJSON('/api/summary');
+            if (stats.error) return;
+
+            const grid = document.getElementById('stats-grid');
+            const fmtGrowth = (val) => {
+                if (val === null || val === undefined) return '';
+                const sign = val >= 0 ? '+' : '';
+                const cls = val >= 0 ? 'positive' : 'negative';
+                return `<div class="stat-change ${cls}">${sign}${val.toFixed(1)}%</div>`;
+            };
+
+            grid.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-value">${fmt(stats.follower_count)}</div>
+                    <div class="stat-label">Followers</div>
+                    ${fmtGrowth(stats.growth_7d)}
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value cyan">${fmt(stats.likes_count)}</div>
+                    <div class="stat-label">Total Likes</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${stats.video_count}</div>
+                    <div class="stat-label">Videos</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value cyan">${fmt(Math.round(stats.avg_views))}</div>
+                    <div class="stat-label">Avg Views</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${stats.avg_engagement_rate.toFixed(1)}%</div>
+                    <div class="stat-label">Avg Engagement</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value cyan">${fmt(stats.best_video_views)}</div>
+                    <div class="stat-label">Best Video Views</div>
+                </div>
+            `;
+        }
+
+        // ── Charts ──
+        async function loadFollowerChart() {
+            const data = await fetchJSON('/api/growth?days=30');
+            if (!data.length) return;
+
+            const ctx = document.getElementById('follower-chart').getContext('2d');
+            if (followerChart) followerChart.destroy();
+
+            followerChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.map(d => new Date(d.date).toLocaleDateString()),
+                    datasets: [{
+                        label: 'Followers',
+                        data: data.map(d => d.followers),
+                        borderColor: '#fe2c55',
+                        backgroundColor: 'rgba(254,44,85,0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 2,
+                    }]
+                },
+                options: chartOptions(),
+            });
+        }
+
+        async function loadLikesChart() {
+            const data = await fetchJSON('/api/likes-growth?days=30');
+            if (!data.length) return;
+
+            const ctx = document.getElementById('likes-chart').getContext('2d');
+            if (likesChart) likesChart.destroy();
+
+            likesChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.map(d => new Date(d.date).toLocaleDateString()),
+                    datasets: [{
+                        label: 'Total Likes',
+                        data: data.map(d => d.likes),
+                        borderColor: '#25f4ee',
+                        backgroundColor: 'rgba(37,244,238,0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 2,
+                    }]
+                },
+                options: chartOptions(),
+            });
+        }
+
+        function chartOptions() {
+            return {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: {
+                        grid: { color: '#2a2a40' },
+                        ticks: { color: '#888', maxTicksLimit: 7 },
+                    },
+                    y: {
+                        grid: { color: '#2a2a40' },
+                        ticks: { color: '#888' },
+                    },
+                },
+            };
+        }
+
+        // ── Top Videos ──
+        async function loadTopVideos() {
+            const videos = await fetchJSON('/api/top-videos?limit=10');
+            const tbody = document.getElementById('videos-table');
+
+            if (!videos.length) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted)">No video data yet</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = videos.map((v, i) => `
+                <tr>
+                    <td>${i + 1}</td>
+                    <td>${escapeHtml(v.title)}</td>
+                    <td>${fmt(v.views)}</td>
+                    <td>${fmt(v.likes)}</td>
+                    <td>${fmt(v.comments)}</td>
+                    <td>${fmt(v.shares)}</td>
+                    <td>${v.engagement_rate}%</td>
+                </tr>
+            `).join('');
+        }
+
+        // ── Collection History ──
+        async function loadHistory() {
+            const logs = await fetchJSON('/api/collection-history?limit=5');
+            const tbody = document.getElementById('history-table');
+
+            if (!logs.length) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted)">No collections yet</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = logs.map(l => `
+                <tr>
+                    <td>${l.date}</td>
+                    <td><span class="status-badge status-${l.status}">${l.status}</span></td>
+                    <td>${l.videos}</td>
+                    <td>${l.duration}</td>
+                </tr>
+            `).join('');
+        }
+
+        // ── Actions ──
+        async function collectData() {
+            const btn = document.getElementById('collect-btn');
+            btn.innerHTML = '<span class="spinner"></span>Collecting...';
+            btn.disabled = true;
+
+            try {
+                const result = await fetchJSON('/api/collect', { method: 'POST' });
+                if (result.status === 'success') {
+                    await loadDashboard();
+                } else {
+                    alert('Collection failed: ' + (result.error || 'Unknown error'));
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            } finally {
+                btn.innerHTML = 'Collect Data';
+                btn.disabled = false;
+            }
+        }
+
+        async function logout() {
+            if (!confirm('Are you sure you want to disconnect?')) return;
+            await fetchJSON('/api/auth/logout', { method: 'POST' });
+            location.reload();
+        }
+
+        // ── Helpers ──
+        async function fetchJSON(url, opts = {}) {
+            try {
+                const resp = await fetch(url, opts);
+                return await resp.json();
+            } catch (e) {
+                console.error(`Fetch error (${url}):`, e);
+                return { error: e.message };
+            }
+        }
+
+        function fmt(n) {
+            if (n === null || n === undefined) return '0';
+            return n.toLocaleString();
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        // ── Start ──
+        init();
+    </script>
+</body>
+</html>

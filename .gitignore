@@ -1,0 +1,13 @@
+.env
+__pycache__/
+*.pyc
+data/tiktok_analytics.db
+data/tokens.json
+data/reports/
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+.vercel/
+node_modules/
