@@ -9,7 +9,7 @@ from cli.commands.report_cmd import report
 @click.group()
 @click.option("--verbose", "-v", is_flag=True, help="Enable verbose logging")
 def cli(verbose):
-    """TikTok Analytics — monitor your account and track growth."""
+    """TikTok Analytics — monitor multiple accounts and track growth."""
     level = logging.DEBUG if verbose else logging.INFO
     logging.basicConfig(
         level=level,
@@ -20,57 +20,56 @@ def cli(verbose):
 
 @cli.command()
 def status():
-    """Show current account status and last collection."""
+    """Show status of all connected accounts."""
     from rich.console import Console
     from rich.panel import Panel
     from db.database import init_db
-    from db.models import ProfileSnapshot, VideoMetricsSnapshot, CollectionLog
-    from auth.token_manager import TokenManager
+    from db.models import Account, ProfileSnapshot, VideoMetricsSnapshot, CollectionLog
 
     console = Console()
     init_db()
 
-    # Auth status
-    tm = TokenManager()
-    auth_info = tm.status()
-    if not auth_info:
-        console.print("[yellow]Not authenticated.[/yellow] Run: tiktok-analytics auth login")
+    accounts = Account.select()
+    if not accounts:
+        console.print("[yellow]No accounts connected.[/yellow] Run: tiktok-analytics auth login")
         return
 
-    # Latest profile
-    latest = (ProfileSnapshot
-              .select()
-              .order_by(ProfileSnapshot.collected_at.desc())
-              .first())
+    for account in accounts:
+        latest = (ProfileSnapshot
+                  .select()
+                  .where(ProfileSnapshot.account == account.id)
+                  .order_by(ProfileSnapshot.collected_at.desc())
+                  .first())
 
-    if not latest:
-        console.print("[yellow]No data collected yet.[/yellow] Run: tiktok-analytics collect now")
-        return
+        if not latest:
+            console.print(Panel(
+                f"[yellow]No data collected yet.[/yellow]\nRun: tiktok-analytics collect now --account-id {account.id}",
+                title=f"{account.display_name or 'Unknown'} (@{account.username or '-'})",
+            ))
+            continue
 
-    # Counts
-    total_snapshots = ProfileSnapshot.select().count()
-    total_metrics = VideoMetricsSnapshot.select().count()
+        total_snapshots = ProfileSnapshot.select().where(ProfileSnapshot.account == account.id).count()
+        total_metrics = VideoMetricsSnapshot.select().where(VideoMetricsSnapshot.account == account.id).count()
 
-    # Last collection
-    last_log = (CollectionLog
-                .select()
-                .order_by(CollectionLog.started_at.desc())
-                .first())
-    last_collection = str(last_log.started_at)[:19] if last_log else "never"
+        last_log = (CollectionLog
+                    .select()
+                    .where(CollectionLog.account == account.id)
+                    .order_by(CollectionLog.started_at.desc())
+                    .first())
+        last_collection = str(last_log.started_at)[:19] if last_log else "never"
 
-    console.print(Panel(
-        f"[bold]{latest.display_name}[/bold] (@{latest.username})\n"
-        f"Verified: {'yes' if latest.is_verified else 'no'}\n"
-        f"\n"
-        f"Followers:   {latest.follower_count:>10,}\n"
-        f"Following:   {latest.following_count:>10,}\n"
-        f"Total Likes: {latest.likes_count:>10,}\n"
-        f"Videos:      {latest.video_count:>10,}\n"
-        f"\n"
-        f"Last collection: {last_collection}\n"
-        f"Database: {total_snapshots} profile snapshots, {total_metrics} video metric snapshots",
-        title="Account Status",
-    ))
+        primary = " [cyan](primary)[/cyan]" if account.is_primary else ""
+
+        console.print(Panel(
+            f"Followers:   {latest.follower_count:>10,}\n"
+            f"Following:   {latest.following_count:>10,}\n"
+            f"Total Likes: {latest.likes_count:>10,}\n"
+            f"Videos:      {latest.video_count:>10,}\n"
+            f"\n"
+            f"Last collection: {last_collection}\n"
+            f"Data: {total_snapshots} profile snapshots, {total_metrics} video metric snapshots",
+            title=f"{latest.display_name} (@{latest.username}){primary}",
+        ))
 
 
 cli.add_command(auth)

@@ -32,8 +32,9 @@ OAUTH_SCOPES = "user.info.basic,user.info.profile,user.info.stats,video.list"
 # Database
 DB_PATH = DATA_DIR / "tiktok_analytics.db"
 
-# Tokens
-TOKEN_PATH = DATA_DIR / "tokens.json"
+# Tokens (per-account storage)
+TOKENS_DIR = DATA_DIR / "tokens"
+TOKENS_DIR.mkdir(parents=True, exist_ok=True)
 TOKEN_ENCRYPTION_KEY = os.getenv("TOKEN_ENCRYPTION_KEY", "default-insecure-key")
 
 # Collection

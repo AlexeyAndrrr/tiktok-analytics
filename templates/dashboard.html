@@ -36,192 +36,107 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
         }
-
         .navbar h1 {
             font-size: 1.5em;
             background: linear-gradient(135deg, var(--pink), var(--cyan));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
+        .navbar-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 
-        .navbar-actions {
-            display: flex;
-            gap: 12px;
-            align-items: center;
-        }
-
-        .btn {
-            padding: 8px 20px;
-            border-radius: 8px;
-            border: none;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 600;
-            transition: all 0.2s;
-        }
-
-        .btn-primary {
-            background: var(--pink);
-            color: white;
-        }
+        .btn { padding: 8px 18px; border-radius: 8px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.2s; }
+        .btn-primary { background: var(--pink); color: white; }
         .btn-primary:hover { background: #e0254a; }
+        .btn-secondary { background: var(--card); color: var(--text); border: 1px solid var(--border); }
+        .btn-secondary:hover { background: var(--card-hover); }
+        .btn-danger { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+        .btn-danger:hover { color: var(--red); border-color: var(--red); }
+        .btn-cyan { background: var(--cyan); color: #000; }
+        .btn-cyan:hover { background: #1dd6d0; }
 
-        .btn-secondary {
+        select {
             background: var(--card);
             color: var(--text);
             border: 1px solid var(--border);
-        }
-        .btn-secondary:hover { background: var(--card-hover); }
-
-        .btn-danger {
-            background: transparent;
-            color: var(--muted);
-            border: 1px solid var(--border);
-        }
-        .btn-danger:hover { color: var(--red); border-color: var(--red); }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 24px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            cursor: pointer;
         }
 
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 16px;
-            margin-bottom: 24px;
-        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
 
-        .stat-card {
-            background: var(--card);
-            border-radius: 12px;
-            padding: 20px;
-            text-align: center;
-            border: 1px solid var(--border);
-            transition: border-color 0.2s;
+        /* Tabs */
+        .tabs { display: flex; gap: 0; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
+        .tab {
+            padding: 12px 24px; cursor: pointer; color: var(--muted);
+            border-bottom: 2px solid transparent; font-weight: 600; font-size: 14px; transition: all 0.2s;
         }
+        .tab:hover { color: var(--text); }
+        .tab.active { color: var(--pink); border-bottom-color: var(--pink); }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .stat-card { background: var(--card); border-radius: 12px; padding: 20px; text-align: center; border: 1px solid var(--border); transition: border-color 0.2s; }
         .stat-card:hover { border-color: var(--pink); }
-
-        .stat-value {
-            font-size: 1.8em;
-            font-weight: 700;
-            color: var(--pink);
-            margin-bottom: 4px;
-        }
+        .stat-value { font-size: 1.8em; font-weight: 700; color: var(--pink); margin-bottom: 4px; }
         .stat-value.cyan { color: var(--cyan); }
-
-        .stat-label {
-            color: var(--muted);
-            font-size: 0.85em;
-        }
-
-        .stat-change {
-            font-size: 0.8em;
-            margin-top: 4px;
-        }
+        .stat-label { color: var(--muted); font-size: 0.85em; }
+        .stat-change { font-size: 0.8em; margin-top: 4px; }
         .stat-change.positive { color: var(--green); }
         .stat-change.negative { color: var(--red); }
 
-        .charts-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-            margin-bottom: 24px;
-        }
+        .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+        .chart-card { background: var(--card); border-radius: 12px; padding: 20px; border: 1px solid var(--border); }
+        .chart-card h3 { margin-bottom: 12px; font-size: 1em; color: var(--muted); }
+        .chart-container { position: relative; height: 250px; }
 
-        .chart-card {
-            background: var(--card);
-            border-radius: 12px;
-            padding: 20px;
-            border: 1px solid var(--border);
-        }
+        .table-card { background: var(--card); border-radius: 12px; padding: 20px; border: 1px solid var(--border); margin-bottom: 24px; }
+        .table-card h3 { margin-bottom: 16px; font-size: 1em; color: var(--muted); }
 
-        .chart-card h3 {
-            margin-bottom: 12px;
-            font-size: 1em;
-            color: var(--muted);
-        }
-
-        .chart-container {
-            position: relative;
-            height: 250px;
-        }
-
-        .table-card {
-            background: var(--card);
-            border-radius: 12px;
-            padding: 20px;
-            border: 1px solid var(--border);
-            margin-bottom: 24px;
-        }
-
-        .table-card h3 {
-            margin-bottom: 16px;
-            font-size: 1em;
-            color: var(--muted);
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        th {
-            text-align: left;
-            color: var(--muted);
-            font-size: 0.8em;
-            text-transform: uppercase;
-            padding: 8px 12px;
-            border-bottom: 1px solid var(--border);
-        }
-
-        td {
-            padding: 10px 12px;
-            border-bottom: 1px solid var(--border);
-            font-size: 0.9em;
-        }
-
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; color: var(--muted); font-size: 0.8em; text-transform: uppercase; padding: 8px 12px; border-bottom: 1px solid var(--border); }
+        td { padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 0.9em; }
         tr:hover td { background: var(--card-hover); }
 
-        .status-badge {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 0.75em;
-            font-weight: 600;
-        }
+        .status-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.75em; font-weight: 600; }
         .status-success { background: rgba(76,175,80,0.2); color: var(--green); }
         .status-failed { background: rgba(244,67,54,0.2); color: var(--red); }
         .status-running { background: rgba(37,244,238,0.2); color: var(--cyan); }
 
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            color: var(--muted);
-        }
+        .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
         .empty-state h2 { margin-bottom: 12px; color: var(--text); }
 
-        .loading { opacity: 0.5; pointer-events: none; }
-
-        .spinner {
-            display: inline-block;
-            width: 16px;
-            height: 16px;
-            border: 2px solid var(--muted);
-            border-top-color: var(--pink);
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-            margin-right: 8px;
-        }
+        .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid var(--muted); border-top-color: var(--pink); border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 8px; }
         @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Compare section */
+        .compare-controls { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 24px; }
+        .compare-controls label { color: var(--muted); font-size: 0.9em; }
+        .checkbox-group { display: flex; gap: 16px; flex-wrap: wrap; }
+        .checkbox-group label { display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text); font-size: 0.9em; }
+        .checkbox-group input[type="checkbox"] { accent-color: var(--pink); width: 16px; height: 16px; }
+
+        .compare-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .compare-card { background: var(--card); border-radius: 12px; padding: 20px; border: 1px solid var(--border); }
+        .compare-card h4 { color: var(--cyan); margin-bottom: 12px; font-size: 1em; }
+        .compare-card .compare-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 0.9em; }
+        .compare-card .compare-row:last-child { border: none; }
+
+        .account-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.75em; font-weight: 600; background: rgba(254,44,85,0.15); color: var(--pink); margin-left: 4px; }
+        .primary-badge { background: rgba(37,244,238,0.15); color: var(--cyan); }
 
         @media (max-width: 768px) {
             .charts-row { grid-template-columns: 1fr; }
             .stats-grid { grid-template-columns: repeat(2, 1fr); }
             .navbar { padding: 12px 16px; }
             .container { padding: 16px; }
+            .compare-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -229,9 +144,9 @@
     <nav class="navbar">
         <h1>TikTok Analytics</h1>
         <div class="navbar-actions">
-            <span id="auth-status" style="color: var(--muted); font-size: 0.9em;"></span>
-            <button class="btn btn-primary" onclick="collectData()" id="collect-btn">Collect Data</button>
-            <button class="btn btn-danger" onclick="logout()" id="logout-btn" style="display:none;">Logout</button>
+            <select id="account-select" onchange="switchAccount(this.value)" style="display:none;"></select>
+            <a href="/api/auth/login" class="btn btn-secondary" id="add-account-btn" style="display:none;">+ Add Account</a>
+            <button class="btn btn-primary" onclick="collectData()" id="collect-btn" style="display:none;">Collect Data</button>
         </div>
     </nav>
 
@@ -244,60 +159,78 @@
             <a href="/api/auth/login" class="btn btn-primary">Connect TikTok Account</a>
         </div>
 
-        <!-- Dashboard content -->
-        <div id="dashboard" style="display:none;">
-            <!-- Stats cards -->
-            <div class="stats-grid" id="stats-grid"></div>
+        <!-- Main app -->
+        <div id="main-app" style="display:none;">
+            <!-- Tabs -->
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('dashboard')">Dashboard</div>
+                <div class="tab" onclick="switchTab('compare')">Compare</div>
+                <div class="tab" onclick="switchTab('accounts')">Accounts</div>
+            </div>
 
-            <!-- Charts -->
-            <div class="charts-row">
-                <div class="chart-card">
-                    <h3>Follower Growth</h3>
-                    <div class="chart-container">
-                        <canvas id="follower-chart"></canvas>
+            <!-- Dashboard tab -->
+            <div id="tab-dashboard" class="tab-content active">
+                <div class="stats-grid" id="stats-grid"></div>
+                <div class="charts-row">
+                    <div class="chart-card">
+                        <h3>Follower Growth</h3>
+                        <div class="chart-container"><canvas id="follower-chart"></canvas></div>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Likes Growth</h3>
+                        <div class="chart-container"><canvas id="likes-chart"></canvas></div>
                     </div>
                 </div>
-                <div class="chart-card">
-                    <h3>Likes Growth</h3>
-                    <div class="chart-container">
-                        <canvas id="likes-chart"></canvas>
+                <div class="table-card">
+                    <h3>Top Videos</h3>
+                    <table>
+                        <thead><tr><th>#</th><th>Title</th><th>Views</th><th>Likes</th><th>Comments</th><th>Shares</th><th>Eng. Rate</th></tr></thead>
+                        <tbody id="videos-table"></tbody>
+                    </table>
+                </div>
+                <div class="table-card">
+                    <h3>Collection History</h3>
+                    <table>
+                        <thead><tr><th>Date</th><th>Status</th><th>Videos</th><th>Duration</th></tr></thead>
+                        <tbody id="history-table"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Compare tab -->
+            <div id="tab-compare" class="tab-content">
+                <div class="compare-controls">
+                    <label>Select accounts to compare:</label>
+                    <div class="checkbox-group" id="compare-checkboxes"></div>
+                    <button class="btn btn-cyan" onclick="runComparison()">Compare</button>
+                </div>
+                <div id="compare-results" style="display:none;">
+                    <div class="compare-grid" id="compare-cards"></div>
+                    <div class="chart-card" style="margin-bottom:24px;">
+                        <h3>Follower Growth Comparison</h3>
+                        <div class="chart-container"><canvas id="compare-chart"></canvas></div>
+                    </div>
+                    <div class="table-card">
+                        <h3>Engagement Comparison</h3>
+                        <table>
+                            <thead><tr><th>Account</th><th>Total Views</th><th>Total Likes</th><th>Total Comments</th><th>Avg Eng. Rate</th><th>Videos</th></tr></thead>
+                            <tbody id="compare-engagement-table"></tbody>
+                        </table>
                     </div>
                 </div>
             </div>
 
-            <!-- Top Videos -->
-            <div class="table-card">
-                <h3>Top Videos</h3>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Title</th>
-                            <th>Views</th>
-                            <th>Likes</th>
-                            <th>Comments</th>
-                            <th>Shares</th>
-                            <th>Eng. Rate</th>
-                        </tr>
-                    </thead>
-                    <tbody id="videos-table"></tbody>
-                </table>
-            </div>
-
-            <!-- Collection History -->
-            <div class="table-card">
-                <h3>Collection History</h3>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Status</th>
-                            <th>Videos</th>
-                            <th>Duration</th>
-                        </tr>
-                    </thead>
-                    <tbody id="history-table"></tbody>
-                </table>
+            <!-- Accounts tab -->
+            <div id="tab-accounts" class="tab-content">
+                <div class="table-card">
+                    <h3>Connected Accounts</h3>
+                    <table>
+                        <thead><tr><th>Account</th><th>Username</th><th>Status</th><th>Actions</th></tr></thead>
+                        <tbody id="accounts-table"></tbody>
+                    </table>
+                    <br>
+                    <a href="/api/auth/login" class="btn btn-primary">+ Connect Another Account</a>
+                </div>
             </div>
         </div>
     </div>
@@ -305,186 +238,231 @@
     <script>
         let followerChart = null;
         let likesChart = null;
+        let compareChart = null;
+        let currentAccountId = null;
+        let allAccounts = [];
+
+        const COLORS = ['#fe2c55','#25f4ee','#ffc107','#4caf50','#9c27b0','#ff5722','#2196f3','#e91e63'];
 
         // ── Init ──
         async function init() {
-            const auth = await fetchJSON('/api/auth/status');
-            if (!auth.authenticated) {
+            const accounts = await fetchJSON('/api/accounts');
+            allAccounts = accounts;
+
+            if (!accounts.length) {
                 document.getElementById('empty-state').style.display = 'block';
-                document.getElementById('dashboard').style.display = 'none';
                 return;
             }
 
-            document.getElementById('empty-state').style.display = 'none';
-            document.getElementById('dashboard').style.display = 'block';
-            document.getElementById('logout-btn').style.display = 'inline-block';
-            document.getElementById('auth-status').textContent = `Connected (${auth.open_id.slice(0, 8)}...)`;
+            document.getElementById('main-app').style.display = 'block';
+            document.getElementById('collect-btn').style.display = 'inline-block';
+            document.getElementById('add-account-btn').style.display = 'inline-block';
 
+            // Build account selector
+            const select = document.getElementById('account-select');
+            if (accounts.length > 1) {
+                select.style.display = 'inline-block';
+                select.innerHTML = accounts.map(a =>
+                    `<option value="${a.id}" ${a.is_primary ? 'selected' : ''}>${a.display_name || a.username || 'Account ' + a.id}${a.is_primary ? ' *' : ''}</option>`
+                ).join('');
+            }
+
+            const primary = accounts.find(a => a.is_primary) || accounts[0];
+            currentAccountId = primary.id;
+
+            buildCompareCheckboxes();
             loadDashboard();
         }
 
+        function switchAccount(id) {
+            currentAccountId = parseInt(id);
+            loadDashboard();
+        }
+
+        function switchTab(name) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelector(`.tab-content#tab-${name}`).classList.add('active');
+            event.target.classList.add('active');
+
+            if (name === 'accounts') loadAccountsTab();
+        }
+
+        function qs(accountId) {
+            return accountId ? `account_id=${accountId}` : '';
+        }
+
+        // ── Dashboard ──
         async function loadDashboard() {
-            await Promise.all([
-                loadSummary(),
-                loadFollowerChart(),
-                loadLikesChart(),
-                loadTopVideos(),
-                loadHistory(),
-            ]);
+            await Promise.all([loadSummary(), loadFollowerChart(), loadLikesChart(), loadTopVideos(), loadHistory()]);
         }
 
-        // ── Summary stats ──
         async function loadSummary() {
-            const stats = await fetchJSON('/api/summary');
+            const stats = await fetchJSON(`/api/summary?${qs(currentAccountId)}`);
             if (stats.error) return;
-
             const grid = document.getElementById('stats-grid');
-            const fmtGrowth = (val) => {
-                if (val === null || val === undefined) return '';
-                const sign = val >= 0 ? '+' : '';
-                const cls = val >= 0 ? 'positive' : 'negative';
-                return `<div class="stat-change ${cls}">${sign}${val.toFixed(1)}%</div>`;
-            };
-
+            const fmtG = (v) => { if (v == null) return ''; const s = v >= 0 ? '+' : ''; return `<div class="stat-change ${v >= 0 ? 'positive' : 'negative'}">${s}${v.toFixed(1)}%</div>`; };
             grid.innerHTML = `
-                <div class="stat-card">
-                    <div class="stat-value">${fmt(stats.follower_count)}</div>
-                    <div class="stat-label">Followers</div>
-                    ${fmtGrowth(stats.growth_7d)}
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value cyan">${fmt(stats.likes_count)}</div>
-                    <div class="stat-label">Total Likes</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">${stats.video_count}</div>
-                    <div class="stat-label">Videos</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value cyan">${fmt(Math.round(stats.avg_views))}</div>
-                    <div class="stat-label">Avg Views</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">${stats.avg_engagement_rate.toFixed(1)}%</div>
-                    <div class="stat-label">Avg Engagement</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value cyan">${fmt(stats.best_video_views)}</div>
-                    <div class="stat-label">Best Video Views</div>
-                </div>
-            `;
+                <div class="stat-card"><div class="stat-value">${fmt(stats.follower_count)}</div><div class="stat-label">Followers</div>${fmtG(stats.growth_7d)}</div>
+                <div class="stat-card"><div class="stat-value cyan">${fmt(stats.likes_count)}</div><div class="stat-label">Total Likes</div></div>
+                <div class="stat-card"><div class="stat-value">${stats.video_count}</div><div class="stat-label">Videos</div></div>
+                <div class="stat-card"><div class="stat-value cyan">${fmt(Math.round(stats.avg_views))}</div><div class="stat-label">Avg Views</div></div>
+                <div class="stat-card"><div class="stat-value">${stats.avg_engagement_rate.toFixed(1)}%</div><div class="stat-label">Avg Engagement</div></div>
+                <div class="stat-card"><div class="stat-value cyan">${fmt(stats.best_video_views)}</div><div class="stat-label">Best Video Views</div></div>`;
         }
 
-        // ── Charts ──
         async function loadFollowerChart() {
-            const data = await fetchJSON('/api/growth?days=30');
+            const data = await fetchJSON(`/api/growth?days=30&${qs(currentAccountId)}`);
             if (!data.length) return;
-
             const ctx = document.getElementById('follower-chart').getContext('2d');
             if (followerChart) followerChart.destroy();
-
             followerChart = new Chart(ctx, {
                 type: 'line',
-                data: {
-                    labels: data.map(d => new Date(d.date).toLocaleDateString()),
-                    datasets: [{
-                        label: 'Followers',
-                        data: data.map(d => d.followers),
-                        borderColor: '#fe2c55',
-                        backgroundColor: 'rgba(254,44,85,0.1)',
-                        fill: true,
-                        tension: 0.4,
-                        pointRadius: 2,
-                    }]
-                },
-                options: chartOptions(),
+                data: { labels: data.map(d => new Date(d.date).toLocaleDateString()), datasets: [{ label: 'Followers', data: data.map(d => d.followers), borderColor: '#fe2c55', backgroundColor: 'rgba(254,44,85,0.1)', fill: true, tension: 0.4, pointRadius: 2 }] },
+                options: chartOpts(),
             });
         }
 
         async function loadLikesChart() {
-            const data = await fetchJSON('/api/likes-growth?days=30');
+            const data = await fetchJSON(`/api/likes-growth?days=30&${qs(currentAccountId)}`);
             if (!data.length) return;
-
             const ctx = document.getElementById('likes-chart').getContext('2d');
             if (likesChart) likesChart.destroy();
-
             likesChart = new Chart(ctx, {
                 type: 'line',
-                data: {
-                    labels: data.map(d => new Date(d.date).toLocaleDateString()),
-                    datasets: [{
-                        label: 'Total Likes',
-                        data: data.map(d => d.likes),
-                        borderColor: '#25f4ee',
-                        backgroundColor: 'rgba(37,244,238,0.1)',
-                        fill: true,
-                        tension: 0.4,
-                        pointRadius: 2,
-                    }]
-                },
-                options: chartOptions(),
+                data: { labels: data.map(d => new Date(d.date).toLocaleDateString()), datasets: [{ label: 'Total Likes', data: data.map(d => d.likes), borderColor: '#25f4ee', backgroundColor: 'rgba(37,244,238,0.1)', fill: true, tension: 0.4, pointRadius: 2 }] },
+                options: chartOpts(),
             });
         }
 
-        function chartOptions() {
+        function chartOpts(showLegend = false) {
             return {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    x: {
-                        grid: { color: '#2a2a40' },
-                        ticks: { color: '#888', maxTicksLimit: 7 },
-                    },
-                    y: {
-                        grid: { color: '#2a2a40' },
-                        ticks: { color: '#888' },
-                    },
-                },
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: showLegend, labels: { color: '#e8e8e8' } } },
+                scales: { x: { grid: { color: '#2a2a40' }, ticks: { color: '#888', maxTicksLimit: 7 } }, y: { grid: { color: '#2a2a40' }, ticks: { color: '#888' } } },
             };
         }
 
-        // ── Top Videos ──
         async function loadTopVideos() {
-            const videos = await fetchJSON('/api/top-videos?limit=10');
+            const videos = await fetchJSON(`/api/top-videos?limit=10&${qs(currentAccountId)}`);
             const tbody = document.getElementById('videos-table');
+            if (!videos.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted)">No video data yet</td></tr>'; return; }
+            tbody.innerHTML = videos.map((v, i) => `<tr><td>${i+1}</td><td>${escapeHtml(v.title)}</td><td>${fmt(v.views)}</td><td>${fmt(v.likes)}</td><td>${fmt(v.comments)}</td><td>${fmt(v.shares)}</td><td>${v.engagement_rate}%</td></tr>`).join('');
+        }
 
-            if (!videos.length) {
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted)">No video data yet</td></tr>';
-                return;
+        async function loadHistory() {
+            const logs = await fetchJSON(`/api/collection-history?limit=5&${qs(currentAccountId)}`);
+            const tbody = document.getElementById('history-table');
+            if (!logs.length) { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted)">No collections yet</td></tr>'; return; }
+            tbody.innerHTML = logs.map(l => `<tr><td>${l.date}</td><td><span class="status-badge status-${l.status}">${l.status}</span></td><td>${l.videos}</td><td>${l.duration}</td></tr>`).join('');
+        }
+
+        // ── Compare ──
+        function buildCompareCheckboxes() {
+            const container = document.getElementById('compare-checkboxes');
+            container.innerHTML = allAccounts.map((a, i) =>
+                `<label><input type="checkbox" value="${a.id}" ${i < 2 ? 'checked' : ''}> ${a.display_name || a.username || 'Account ' + a.id}</label>`
+            ).join('');
+        }
+
+        async function runComparison() {
+            const checked = [...document.querySelectorAll('#compare-checkboxes input:checked')].map(c => c.value);
+            if (checked.length < 2) { alert('Select at least 2 accounts'); return; }
+            const ids = checked.join(',');
+
+            document.getElementById('compare-results').style.display = 'block';
+
+            const [summaries, growth, engagement] = await Promise.all([
+                fetchJSON(`/api/compare?ids=${ids}`),
+                fetchJSON(`/api/compare/growth?ids=${ids}&days=30`),
+                fetchJSON(`/api/compare/engagement?ids=${ids}`),
+            ]);
+
+            // Summary cards
+            const cardsDiv = document.getElementById('compare-cards');
+            cardsDiv.innerHTML = summaries.map((s, i) => {
+                const fmtG = (v) => v != null ? `${v >= 0 ? '+' : ''}${v.toFixed(1)}%` : 'n/a';
+                return `<div class="compare-card">
+                    <h4 style="color:${COLORS[i % COLORS.length]}">${escapeHtml(s.display_name)} @${escapeHtml(s.username)}</h4>
+                    <div class="compare-row"><span>Followers</span><span>${fmt(s.follower_count)}</span></div>
+                    <div class="compare-row"><span>Growth 7d</span><span>${fmtG(s.growth_7d)}</span></div>
+                    <div class="compare-row"><span>Growth 30d</span><span>${fmtG(s.growth_30d)}</span></div>
+                    <div class="compare-row"><span>Total Likes</span><span>${fmt(s.likes_count)}</span></div>
+                    <div class="compare-row"><span>Videos</span><span>${s.video_count}</span></div>
+                    <div class="compare-row"><span>Avg Views</span><span>${fmt(Math.round(s.avg_views))}</span></div>
+                    <div class="compare-row"><span>Avg Engagement</span><span>${s.avg_engagement_rate.toFixed(1)}%</span></div>
+                </div>`;
+            }).join('');
+
+            // Growth chart overlay
+            const ctx = document.getElementById('compare-chart').getContext('2d');
+            if (compareChart) compareChart.destroy();
+
+            const datasets = [];
+            const labels = new Set();
+            let i = 0;
+            for (const [username, points] of Object.entries(growth)) {
+                points.forEach(p => labels.add(new Date(p.date).toLocaleDateString()));
+                datasets.push({
+                    label: username,
+                    data: points.map(p => ({ x: new Date(p.date).toLocaleDateString(), y: p.followers })),
+                    borderColor: COLORS[i % COLORS.length],
+                    backgroundColor: 'transparent',
+                    tension: 0.4,
+                    pointRadius: 2,
+                });
+                i++;
             }
+            const sortedLabels = [...labels].sort((a, b) => new Date(a) - new Date(b));
 
-            tbody.innerHTML = videos.map((v, i) => `
+            compareChart = new Chart(ctx, {
+                type: 'line',
+                data: { labels: sortedLabels, datasets },
+                options: chartOpts(true),
+            });
+
+            // Engagement table
+            const tbody = document.getElementById('compare-engagement-table');
+            tbody.innerHTML = engagement.map((e, i) =>
+                `<tr>
+                    <td><span style="color:${COLORS[i % COLORS.length]}">${escapeHtml(e.display_name)} @${escapeHtml(e.username)}</span></td>
+                    <td>${fmt(e.total_views)}</td>
+                    <td>${fmt(e.total_likes)}</td>
+                    <td>${fmt(e.total_comments)}</td>
+                    <td>${e.avg_engagement_rate}%</td>
+                    <td>${e.video_count}</td>
+                </tr>`
+            ).join('');
+        }
+
+        // ── Accounts tab ──
+        async function loadAccountsTab() {
+            const accounts = await fetchJSON('/api/accounts');
+            allAccounts = accounts;
+            const tbody = document.getElementById('accounts-table');
+            tbody.innerHTML = accounts.map(a => `
                 <tr>
-                    <td>${i + 1}</td>
-                    <td>${escapeHtml(v.title)}</td>
-                    <td>${fmt(v.views)}</td>
-                    <td>${fmt(v.likes)}</td>
-                    <td>${fmt(v.comments)}</td>
-                    <td>${fmt(v.shares)}</td>
-                    <td>${v.engagement_rate}%</td>
+                    <td>${escapeHtml(a.display_name || 'Unknown')}</td>
+                    <td>@${escapeHtml(a.username || '-')}</td>
+                    <td>${a.is_primary ? '<span class="account-badge primary-badge">primary</span>' : '<span class="account-badge">connected</span>'}</td>
+                    <td>
+                        ${a.is_primary ? '' : `<button class="btn btn-secondary" onclick="setPrimary(${a.id})" style="padding:4px 12px;font-size:12px;">Set Primary</button>`}
+                        <button class="btn btn-danger" onclick="removeAccount(${a.id})" style="padding:4px 12px;font-size:12px;">Remove</button>
+                    </td>
                 </tr>
             `).join('');
         }
 
-        // ── Collection History ──
-        async function loadHistory() {
-            const logs = await fetchJSON('/api/collection-history?limit=5');
-            const tbody = document.getElementById('history-table');
+        async function setPrimary(id) {
+            await fetchJSON(`/api/accounts/${id}/set-primary`, { method: 'POST' });
+            currentAccountId = id;
+            await init();
+        }
 
-            if (!logs.length) {
-                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted)">No collections yet</td></tr>';
-                return;
-            }
-
-            tbody.innerHTML = logs.map(l => `
-                <tr>
-                    <td>${l.date}</td>
-                    <td><span class="status-badge status-${l.status}">${l.status}</span></td>
-                    <td>${l.videos}</td>
-                    <td>${l.duration}</td>
-                </tr>
-            `).join('');
+        async function removeAccount(id) {
+            if (!confirm('Remove this account and all its data?')) return;
+            await fetchJSON(`/api/accounts/${id}/remove`, { method: 'POST' });
+            await init();
         }
 
         // ── Actions ──
@@ -492,51 +470,23 @@
             const btn = document.getElementById('collect-btn');
             btn.innerHTML = '<span class="spinner"></span>Collecting...';
             btn.disabled = true;
-
             try {
-                const result = await fetchJSON('/api/collect', { method: 'POST' });
-                if (result.status === 'success') {
-                    await loadDashboard();
-                } else {
-                    alert('Collection failed: ' + (result.error || 'Unknown error'));
-                }
-            } catch (e) {
-                alert('Error: ' + e.message);
-            } finally {
-                btn.innerHTML = 'Collect Data';
-                btn.disabled = false;
-            }
-        }
-
-        async function logout() {
-            if (!confirm('Are you sure you want to disconnect?')) return;
-            await fetchJSON('/api/auth/logout', { method: 'POST' });
-            location.reload();
+                const body = JSON.stringify({ account_id: currentAccountId });
+                const result = await fetchJSON('/api/collect', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
+                if (result.status === 'success') await loadDashboard();
+                else alert('Collection failed: ' + (result.error || 'Unknown error'));
+            } catch (e) { alert('Error: ' + e.message); }
+            finally { btn.innerHTML = 'Collect Data'; btn.disabled = false; }
         }
 
         // ── Helpers ──
         async function fetchJSON(url, opts = {}) {
-            try {
-                const resp = await fetch(url, opts);
-                return await resp.json();
-            } catch (e) {
-                console.error(`Fetch error (${url}):`, e);
-                return { error: e.message };
-            }
+            try { const resp = await fetch(url, opts); return await resp.json(); }
+            catch (e) { console.error(`Fetch error (${url}):`, e); return { error: e.message }; }
         }
+        function fmt(n) { if (n == null) return '0'; return n.toLocaleString(); }
+        function escapeHtml(str) { const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
 
-        function fmt(n) {
-            if (n === null || n === undefined) return '0';
-            return n.toLocaleString();
-        }
-
-        function escapeHtml(str) {
-            const div = document.createElement('div');
-            div.textContent = str;
-            return div.innerHTML;
-        }
-
-        // ── Start ──
         init();
     </script>
 </body>

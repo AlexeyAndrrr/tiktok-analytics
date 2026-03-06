@@ -11,8 +11,22 @@ class BaseModel(Model):
         database = db
 
 
+class Account(BaseModel):
+    id = AutoField()
+    open_id = CharField(unique=True)
+    display_name = CharField(default="")
+    username = CharField(null=True)
+    avatar_url = CharField(null=True)
+    is_primary = BooleanField(default=False)
+    added_at = DateTimeField(default=datetime.utcnow)
+
+    class Meta:
+        table_name = "accounts"
+
+
 class ProfileSnapshot(BaseModel):
     id = AutoField()
+    account = ForeignKeyField(Account, backref="profile_snapshots", on_delete="CASCADE")
     collected_at = DateTimeField(default=datetime.utcnow)
     open_id = CharField()
     display_name = CharField(default="")
@@ -31,6 +45,7 @@ class ProfileSnapshot(BaseModel):
 
 class Video(BaseModel):
     id = CharField(primary_key=True)
+    account = ForeignKeyField(Account, backref="videos", on_delete="CASCADE", null=True)
     title = TextField(null=True)
     video_description = TextField(null=True)
     create_time = DateTimeField(null=True)
@@ -48,6 +63,7 @@ class Video(BaseModel):
 class VideoMetricsSnapshot(BaseModel):
     id = AutoField()
     video = ForeignKeyField(Video, backref="metrics_snapshots", on_delete="CASCADE")
+    account = ForeignKeyField(Account, backref="video_metrics", on_delete="CASCADE", null=True)
     collected_at = DateTimeField(default=datetime.utcnow)
     view_count = IntegerField(default=0)
     like_count = IntegerField(default=0)
@@ -63,6 +79,7 @@ class VideoMetricsSnapshot(BaseModel):
 
 class CollectionLog(BaseModel):
     id = AutoField()
+    account = ForeignKeyField(Account, backref="collection_logs", on_delete="CASCADE", null=True)
     started_at = DateTimeField(default=datetime.utcnow)
     completed_at = DateTimeField(null=True)
     status = CharField(default="running")  # running, success, partial, failed

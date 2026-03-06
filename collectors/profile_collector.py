@@ -2,14 +2,16 @@ from datetime import datetime
 
 from tiktok_client.official_client import TikTokOfficialClient
 from tiktok_client.unofficial_client import TikTokUnofficialClient
-from db.models import ProfileSnapshot
+from db.models import Account, ProfileSnapshot
 from db.database import db
 
 
 class ProfileCollector:
-    """Collects and stores profile snapshots."""
+    """Collects and stores profile snapshots for a specific account."""
 
-    def __init__(self, official: TikTokOfficialClient, unofficial: TikTokUnofficialClient | None = None):
+    def __init__(self, account: Account, official: TikTokOfficialClient,
+                 unofficial: TikTokUnofficialClient | None = None):
+        self.account = account
         self.official = official
         self.unofficial = unofficial
 
@@ -17,16 +19,21 @@ class ProfileCollector:
         """Fetch profile data and save a snapshot."""
         try:
             user = await self.official.get_user_info()
-            source = "official_api"
         except Exception as e:
             if self.unofficial:
                 user = await self.unofficial.get_user_info()
-                source = "unofficial_api"
             else:
                 raise RuntimeError(f"Failed to fetch profile: {e}")
 
+        # Update account info
+        self.account.display_name = user.get("display_name", "")
+        self.account.username = user.get("username")
+        self.account.avatar_url = user.get("avatar_url")
+        self.account.save()
+
         with db.atomic():
             snapshot = ProfileSnapshot.create(
+                account=self.account,
                 collected_at=datetime.utcnow(),
                 open_id=user.get("open_id", ""),
                 display_name=user.get("display_name", ""),

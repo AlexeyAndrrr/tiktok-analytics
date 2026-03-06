@@ -2,22 +2,21 @@ from datetime import datetime
 
 from tiktok_client.official_client import TikTokOfficialClient
 from tiktok_client.unofficial_client import TikTokUnofficialClient
-from db.models import Video, VideoMetricsSnapshot
+from db.models import Account, Video, VideoMetricsSnapshot
 from db.database import db
 
 
 class VideoCollector:
-    """Collects video metadata and metrics snapshots."""
+    """Collects video metadata and metrics snapshots for a specific account."""
 
-    def __init__(self, official: TikTokOfficialClient, unofficial: TikTokUnofficialClient | None = None):
+    def __init__(self, account: Account, official: TikTokOfficialClient,
+                 unofficial: TikTokUnofficialClient | None = None):
+        self.account = account
         self.official = official
         self.unofficial = unofficial
 
     async def collect(self) -> tuple[int, int]:
-        """
-        Fetch all videos and their metrics.
-        Returns (new_videos_count, metrics_snapshots_count).
-        """
+        """Fetch all videos and their metrics. Returns (new_videos, snapshots)."""
         try:
             return await self._collect_official()
         except Exception as e:
@@ -26,8 +25,6 @@ class VideoCollector:
             raise RuntimeError(f"Failed to collect videos: {e}")
 
     async def _collect_official(self) -> tuple[int, int]:
-        """Collect via official TikTok API (two-step: list + query metrics)."""
-        # Step 1: Get all videos
         raw_videos = await self.official.list_all_videos()
         new_count = 0
 
@@ -40,6 +37,7 @@ class VideoCollector:
                 _, created = Video.get_or_create(
                     id=v["id"],
                     defaults={
+                        "account": self.account,
                         "title": v.get("title", ""),
                         "video_description": v.get("video_description", ""),
                         "create_time": create_time,
@@ -53,7 +51,6 @@ class VideoCollector:
                 if created:
                     new_count += 1
 
-        # Step 2: Query metrics for all videos
         video_ids = [v["id"] for v in raw_videos]
         if not video_ids:
             return new_count, 0
@@ -66,6 +63,7 @@ class VideoCollector:
             for m in metrics:
                 VideoMetricsSnapshot.create(
                     video=m["id"],
+                    account=self.account,
                     collected_at=now,
                     view_count=m.get("view_count", 0),
                     like_count=m.get("like_count", 0),
@@ -77,7 +75,6 @@ class VideoCollector:
         return new_count, snapshot_count
 
     async def _collect_unofficial(self) -> tuple[int, int]:
-        """Collect via unofficial API (combined metadata + metrics)."""
         raw_videos = await self.unofficial.get_user_videos()
         new_count = 0
         now = datetime.utcnow()
@@ -91,6 +88,7 @@ class VideoCollector:
                 _, created = Video.get_or_create(
                     id=v["id"],
                     defaults={
+                        "account": self.account,
                         "title": v.get("title", ""),
                         "create_time": create_time,
                         "cover_image_url": v.get("cover_image_url"),
@@ -102,6 +100,7 @@ class VideoCollector:
 
                 VideoMetricsSnapshot.create(
                     video=v["id"],
+                    account=self.account,
                     collected_at=now,
                     view_count=v.get("view_count", 0),
                     like_count=v.get("like_count", 0),

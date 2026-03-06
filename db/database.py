@@ -10,6 +10,6 @@ db = SqliteDatabase(str(settings.DB_PATH), pragmas={
 
 def init_db():
     """Create all tables if they don't exist."""
-    from db.models import ProfileSnapshot, Video, VideoMetricsSnapshot, CollectionLog
+    from db.models import Account, ProfileSnapshot, Video, VideoMetricsSnapshot, CollectionLog
     db.connect(reuse_if_open=True)
-    db.create_tables([ProfileSnapshot, Video, VideoMetricsSnapshot, CollectionLog])
+    db.create_tables([Account, ProfileSnapshot, Video, VideoMetricsSnapshot, CollectionLog])

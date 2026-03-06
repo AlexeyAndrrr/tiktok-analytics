@@ -10,7 +10,7 @@ from tiktok_client.official_client import TikTokOfficialClient
 from tiktok_client.unofficial_client import TikTokUnofficialClient
 from collectors.profile_collector import ProfileCollector
 from collectors.video_collector import VideoCollector
-from db.models import CollectionLog
+from db.models import Account, CollectionLog
 from db.database import db, init_db
 from config import settings
 
@@ -18,21 +18,45 @@ logger = logging.getLogger(__name__)
 
 
 def _run_collection():
-    """Synchronous wrapper for async collection."""
-    asyncio.run(_async_collect())
+    """Synchronous wrapper for async collection of ALL accounts."""
+    asyncio.run(_async_collect_all())
 
 
-async def _async_collect():
-    """Run a full collection cycle."""
+async def _async_collect_all():
+    """Run collection for all registered accounts."""
     init_db()
-    token_manager = TokenManager()
+    tm = TokenManager()
+    account_ids = tm.list_account_ids()
+
+    if not account_ids:
+        logger.warning("No accounts configured. Skipping collection.")
+        return
+
+    for account_id in account_ids:
+        await _async_collect(account_id)
+
+
+async def _async_collect(account_id: int):
+    """Run a full collection cycle for a single account."""
+    init_db()
+    token_manager = TokenManager(account_id=account_id)
+
+    account = Account.get_or_none(Account.id == account_id)
+    if not account:
+        logger.error(f"Account {account_id} not found in DB")
+        return
+
     official = TikTokOfficialClient(token_manager)
-    unofficial = TikTokUnofficialClient(settings.TIKTOK_USERNAME) if settings.TIKTOK_USERNAME else None
+    unofficial = TikTokUnofficialClient(account.username or "") if account.username else None
 
-    profile_collector = ProfileCollector(official, unofficial)
-    video_collector = VideoCollector(official, unofficial)
+    profile_collector = ProfileCollector(account, official, unofficial)
+    video_collector = VideoCollector(account, official, unofficial)
 
-    log = CollectionLog.create(started_at=datetime.utcnow(), status="running")
+    log = CollectionLog.create(
+        account=account,
+        started_at=datetime.utcnow(),
+        status="running",
+    )
 
     try:
         profile = await profile_collector.collect()
@@ -44,7 +68,7 @@ async def _async_collect():
         log.save()
 
         logger.info(
-            f"Collection complete: {profile.display_name} | "
+            f"[{account.display_name}] Collection complete: "
             f"{profile.follower_count} followers | "
             f"{new_videos} new videos | {snapshots} metric snapshots"
         )
@@ -54,7 +78,7 @@ async def _async_collect():
         log.error_message = str(e)
         log.completed_at = datetime.utcnow()
         log.save()
-        logger.error(f"Collection failed: {e}")
+        logger.error(f"[Account {account_id}] Collection failed: {e}")
 
     finally:
         await official.close()
@@ -63,20 +87,19 @@ async def _async_collect():
 
 
 class CollectionScheduler:
-    """Periodic data collection using APScheduler."""
+    """Periodic data collection for all accounts using APScheduler."""
 
     def __init__(self, interval_hours: int | None = None):
         self.interval_hours = interval_hours or settings.COLLECTION_INTERVAL_HOURS
 
     def start(self):
-        """Start the scheduler (blocks until Ctrl+C)."""
         scheduler = BlockingScheduler()
         scheduler.add_job(
             _run_collection,
             trigger=IntervalTrigger(hours=self.interval_hours),
             id="tiktok_collection",
-            name="TikTok Data Collection",
-            next_run_time=datetime.utcnow(),  # Run immediately on start
+            name="TikTok Data Collection (all accounts)",
+            next_run_time=datetime.utcnow(),
         )
 
         logger.info(f"Scheduler started. Collecting every {self.interval_hours} hours. Press Ctrl+C to stop.")

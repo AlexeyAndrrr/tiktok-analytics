@@ -8,10 +8,10 @@ from pathlib import Path
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from flask import Flask, render_template, jsonify, redirect, request, session, url_for
+from flask import Flask, render_template, jsonify, redirect, request, session
 from config import settings
 from db.database import init_db
-from db.models import ProfileSnapshot, Video, VideoMetricsSnapshot, CollectionLog
+from db.models import Account, ProfileSnapshot, Video, VideoMetricsSnapshot, CollectionLog
 
 app = Flask(
     __name__,
@@ -19,6 +19,15 @@ app = Flask(
     static_folder=os.path.join(os.path.dirname(os.path.dirname(__file__)), "static"),
 )
 app.secret_key = settings.TOKEN_ENCRYPTION_KEY
+
+
+def _get_account_id():
+    """Get account_id from query param or default to primary."""
+    from auth.token_manager import TokenManager
+    aid = request.args.get("account_id", type=int)
+    if aid:
+        return aid
+    return TokenManager().get_primary_id()
 
 
 @app.before_request
@@ -30,13 +39,11 @@ def setup_db():
 
 @app.route("/")
 def dashboard():
-    """Main dashboard page."""
     return render_template("dashboard.html")
 
 
 @app.route("/login")
 def login_page():
-    """OAuth login page."""
     return render_template("login.html")
 
 
@@ -50,11 +57,8 @@ def auth_login():
 
     from auth.oauth_server import OAuthCallbackServer
     server = OAuthCallbackServer()
-
-    # Store PKCE verifier in session
     session["code_verifier"] = server.code_verifier
     session["oauth_state"] = server.state
-
     return redirect(server.get_authorization_url())
 
 
@@ -67,7 +71,7 @@ def auth_callback():
 
     state = request.args.get("state")
     if state != session.get("oauth_state"):
-        return render_template("login.html", error="State mismatch — possible CSRF attack")
+        return render_template("login.html", error="State mismatch")
 
     code = request.args.get("code")
     if not code:
@@ -75,7 +79,6 @@ def auth_callback():
 
     from auth.token_manager import TokenManager
     tm = TokenManager()
-
     try:
         tm.exchange_code(code, session.get("code_verifier", ""))
         return redirect("/")
@@ -85,9 +88,10 @@ def auth_callback():
 
 @app.route("/api/auth/status")
 def auth_status():
-    """Check authentication status."""
     from auth.token_manager import TokenManager
     tm = TokenManager()
+    if not tm.has_any_accounts():
+        return jsonify({"authenticated": False})
     info = tm.status()
     if not info:
         return jsonify({"authenticated": False})
@@ -96,36 +100,84 @@ def auth_status():
 
 @app.route("/api/auth/logout", methods=["POST"])
 def auth_logout():
-    """Revoke tokens and log out."""
+    """Revoke current account tokens."""
+    account_id = request.json.get("account_id") if request.is_json else None
     from auth.token_manager import TokenManager
-    tm = TokenManager()
-    tm.revoke()
+    tm = TokenManager(account_id=account_id)
+    tm.revoke(account_id)
     return jsonify({"ok": True})
 
 
-# ── Data API ───────────────────────────────────────────
+# ── Account management ────────────────────────────────
+
+@app.route("/api/accounts")
+def list_accounts():
+    """List all connected accounts."""
+    accounts = Account.select().order_by(Account.added_at)
+    result = []
+    for a in accounts:
+        result.append({
+            "id": a.id,
+            "open_id": a.open_id,
+            "display_name": a.display_name,
+            "username": a.username or "",
+            "avatar_url": a.avatar_url or "",
+            "is_primary": a.is_primary,
+        })
+    return jsonify(result)
+
+
+@app.route("/api/accounts/<int:account_id>/set-primary", methods=["POST"])
+def set_primary_account(account_id):
+    from auth.token_manager import TokenManager
+    tm = TokenManager()
+    tm.set_primary(account_id)
+    return jsonify({"ok": True})
+
+
+@app.route("/api/accounts/<int:account_id>/remove", methods=["POST"])
+def remove_account(account_id):
+    from auth.token_manager import TokenManager
+    tm = TokenManager()
+    tm.revoke(account_id)
+    return jsonify({"ok": True})
+
+
+# ── Data API (account-scoped) ─────────────────────────
 
 @app.route("/api/collect", methods=["POST"])
 def collect_now():
-    """Trigger immediate data collection."""
+    """Trigger data collection for a specific or all accounts."""
     from auth.token_manager import TokenManager
     from tiktok_client.official_client import TikTokOfficialClient
     from tiktok_client.unofficial_client import TikTokUnofficialClient
     from collectors.profile_collector import ProfileCollector
     from collectors.video_collector import VideoCollector
 
-    tm = TokenManager()
+    account_id = None
+    if request.is_json:
+        account_id = request.json.get("account_id")
+    if not account_id:
+        account_id = _get_account_id()
+    if not account_id:
+        return jsonify({"error": "No accounts configured"}), 400
+
+    account = Account.get_or_none(Account.id == account_id)
+    if not account:
+        return jsonify({"error": "Account not found"}), 404
+
+    tm = TokenManager(account_id=account_id)
     if not tm.load():
         return jsonify({"error": "Not authenticated"}), 401
 
     async def _collect():
         official = TikTokOfficialClient(tm)
-        unofficial = TikTokUnofficialClient(settings.TIKTOK_USERNAME) if settings.TIKTOK_USERNAME else None
+        unofficial = None
 
-        profile_collector = ProfileCollector(official, unofficial)
-        video_collector = VideoCollector(official, unofficial)
+        profile_collector = ProfileCollector(account, official, unofficial)
+        video_collector = VideoCollector(account, official, unofficial)
 
-        log = CollectionLog.create(started_at=datetime.utcnow(), status="running")
+        log = CollectionLog.create(account=account, started_at=datetime.utcnow(), status="running")
 
         try:
             profile = await profile_collector.collect()
@@ -151,8 +203,6 @@ def collect_now():
             return {"status": "failed", "error": str(e)}
         finally:
             await official.close()
-            if unofficial:
-                await unofficial.close()
 
     result = asyncio.run(_collect())
     status_code = 200 if result["status"] == "success" else 500
@@ -161,67 +211,53 @@ def collect_now():
 
 @app.route("/api/summary")
 def api_summary():
-    """Get account summary stats."""
     from reports.analytics import AnalyticsEngine
-    engine = AnalyticsEngine()
+    account_id = _get_account_id()
+    engine = AnalyticsEngine(account_id=account_id)
     stats = engine.summary_stats()
     if not stats:
         return jsonify({"error": "No data yet"}), 404
-    growth_7d = engine.growth_rate("follower_count", days=7)
-    growth_30d = engine.growth_rate("follower_count", days=30)
-    stats["growth_7d"] = growth_7d
-    stats["growth_30d"] = growth_30d
+    stats["growth_7d"] = engine.growth_rate("follower_count", days=7)
+    stats["growth_30d"] = engine.growth_rate("follower_count", days=30)
+    stats["account_id"] = account_id
     return jsonify(stats)
 
 
 @app.route("/api/growth")
 def api_growth():
-    """Get follower growth data."""
     days = request.args.get("days", 30, type=int)
+    account_id = _get_account_id()
     from reports.analytics import AnalyticsEngine
-    engine = AnalyticsEngine()
-
+    engine = AnalyticsEngine(account_id=account_id)
     df = engine.follower_growth(days=days)
     if df.empty:
         return jsonify([])
-
-    data = []
-    for _, row in df.iterrows():
-        data.append({
-            "date": row["collected_at"].isoformat(),
-            "followers": int(row["follower_count"]),
-        })
+    data = [{"date": row["collected_at"].isoformat(), "followers": int(row["follower_count"])}
+            for _, row in df.iterrows()]
     return jsonify(data)
 
 
 @app.route("/api/likes-growth")
 def api_likes_growth():
-    """Get likes growth data."""
     days = request.args.get("days", 30, type=int)
+    account_id = _get_account_id()
     from reports.analytics import AnalyticsEngine
-    engine = AnalyticsEngine()
-
+    engine = AnalyticsEngine(account_id=account_id)
     df = engine.likes_growth(days=days)
     if df.empty:
         return jsonify([])
-
-    data = []
-    for _, row in df.iterrows():
-        data.append({
-            "date": row["collected_at"].isoformat(),
-            "likes": int(row["likes_count"]),
-        })
+    data = [{"date": row["collected_at"].isoformat(), "likes": int(row["likes_count"])}
+            for _, row in df.iterrows()]
     return jsonify(data)
 
 
 @app.route("/api/top-videos")
 def api_top_videos():
-    """Get top videos."""
     limit = request.args.get("limit", 10, type=int)
     sort = request.args.get("sort", "views")
-
+    account_id = _get_account_id()
     from reports.analytics import AnalyticsEngine
-    engine = AnalyticsEngine()
+    engine = AnalyticsEngine(account_id=account_id)
 
     if sort == "engagement":
         df = engine.top_videos_by_engagement_rate(limit=limit)
@@ -230,28 +266,26 @@ def api_top_videos():
 
     if df.empty:
         return jsonify([])
-
-    videos = []
-    for _, row in df.iterrows():
-        videos.append({
-            "title": str(row.get("title", ""))[:60] or "(no title)",
-            "views": int(row["view_count"]),
-            "likes": int(row["like_count"]),
-            "comments": int(row["comment_count"]),
-            "shares": int(row["share_count"]),
-            "engagement_rate": round(row.get("engagement_rate", 0), 2),
-        })
+    videos = [{
+        "title": str(row.get("title", ""))[:60] or "(no title)",
+        "views": int(row["view_count"]),
+        "likes": int(row["like_count"]),
+        "comments": int(row["comment_count"]),
+        "shares": int(row["share_count"]),
+        "engagement_rate": round(row.get("engagement_rate", 0), 2),
+    } for _, row in df.iterrows()]
     return jsonify(videos)
 
 
 @app.route("/api/collection-history")
 def api_collection_history():
-    """Get collection log."""
     limit = request.args.get("limit", 10, type=int)
-    logs = (CollectionLog
-            .select()
-            .order_by(CollectionLog.started_at.desc())
-            .limit(limit))
+    account_id = _get_account_id()
+
+    query = CollectionLog.select().order_by(CollectionLog.started_at.desc())
+    if account_id:
+        query = query.where(CollectionLog.account == account_id)
+    logs = query.limit(limit)
 
     result = []
     for log in logs:
@@ -259,7 +293,6 @@ def api_collection_history():
         if log.completed_at and log.started_at:
             delta = log.completed_at - log.started_at
             duration = f"{delta.total_seconds():.1f}s"
-
         result.append({
             "date": str(log.started_at)[:19],
             "status": log.status,
@@ -270,20 +303,55 @@ def api_collection_history():
     return jsonify(result)
 
 
+# ── Comparison API ─────────────────────────────────────
+
+@app.route("/api/compare")
+def api_compare():
+    """Compare summary stats across multiple accounts."""
+    ids = request.args.get("ids", "")
+    if not ids:
+        return jsonify({"error": "Provide ?ids=1,2,3"}), 400
+    account_ids = [int(x) for x in ids.split(",") if x.strip().isdigit()]
+    from reports.analytics import AnalyticsEngine
+    return jsonify(AnalyticsEngine.compare_summary(account_ids))
+
+
+@app.route("/api/compare/growth")
+def api_compare_growth():
+    """Compare follower growth across accounts."""
+    ids = request.args.get("ids", "")
+    days = request.args.get("days", 30, type=int)
+    if not ids:
+        return jsonify({"error": "Provide ?ids=1,2,3"}), 400
+    account_ids = [int(x) for x in ids.split(",") if x.strip().isdigit()]
+    from reports.analytics import AnalyticsEngine
+    return jsonify(AnalyticsEngine.compare_followers(account_ids, days=days))
+
+
+@app.route("/api/compare/engagement")
+def api_compare_engagement():
+    """Compare engagement across accounts."""
+    ids = request.args.get("ids", "")
+    if not ids:
+        return jsonify({"error": "Provide ?ids=1,2,3"}), 400
+    account_ids = [int(x) for x in ids.split(",") if x.strip().isdigit()]
+    from reports.analytics import AnalyticsEngine
+    return jsonify(AnalyticsEngine.compare_engagement(account_ids))
+
+
 # ── Vercel Cron ────────────────────────────────────────
 
 @app.route("/api/cron/collect")
 def cron_collect():
-    """Endpoint for Vercel Cron to trigger collection."""
-    # Verify cron secret
+    """Endpoint for Vercel Cron — collects all accounts."""
     auth_header = request.headers.get("Authorization")
     cron_secret = os.getenv("CRON_SECRET", "")
     if cron_secret and auth_header != f"Bearer {cron_secret}":
         return jsonify({"error": "Unauthorized"}), 401
 
-    # Reuse collect logic
-    with app.test_request_context():
-        return collect_now()
+    from collectors.scheduler import _async_collect_all
+    asyncio.run(_async_collect_all())
+    return jsonify({"ok": True})
 
 
 if __name__ == "__main__":

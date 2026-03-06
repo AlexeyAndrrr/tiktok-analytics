@@ -1,96 +1,129 @@
 import click
 from rich.console import Console
 from rich.panel import Panel
+from rich.table import Table
 
 console = Console()
 
 
 @click.group("auth")
 def auth():
-    """Manage TikTok authentication."""
+    """Manage TikTok authentication and accounts."""
     pass
 
 
 @auth.command()
 def login():
-    """Authenticate with TikTok via OAuth2."""
+    """Add a new TikTok account via OAuth2."""
     from config import settings
 
     if not settings.TIKTOK_CLIENT_KEY or settings.TIKTOK_CLIENT_KEY == "your_client_key_here":
         console.print("[red]Error:[/red] Set TIKTOK_CLIENT_KEY and TIKTOK_CLIENT_SECRET in .env file")
-        console.print("Register your app at: https://developers.tiktok.com/")
         raise SystemExit(1)
 
     from auth.oauth_server import OAuthCallbackServer
     from auth.token_manager import TokenManager
-
-    console.print("Starting OAuth2 authorization flow...")
-    console.print(f"Callback server will listen on port {settings.OAUTH_PORT}")
+    from db.database import init_db
+    init_db()
 
     server = OAuthCallbackServer()
     console.print("[blue]Opening browser for TikTok authorization...[/blue]")
 
     auth_code, error = server.start_and_wait()
-
     if error:
         console.print(f"[red]Authorization failed:[/red] {error}")
         raise SystemExit(1)
 
-    console.print("Exchanging authorization code for tokens...")
-    token_manager = TokenManager()
-    tokens = token_manager.exchange_code(auth_code, server.code_verifier)
+    tm = TokenManager()
+    tokens = tm.exchange_code(auth_code, server.code_verifier)
 
     console.print(Panel(
-        f"[green]Successfully authenticated![/green]\n"
+        f"[green]Account added![/green]\n"
+        f"Account ID: {tokens.get('account_id')}\n"
         f"Open ID: {tokens['open_id']}\n"
         f"Scopes: {tokens['scope']}",
         title="Authentication Complete",
     ))
 
 
-@auth.command()
-def status():
-    """Show authentication status."""
-    from auth.token_manager import TokenManager
+@auth.command("list")
+def list_accounts():
+    """List all connected accounts."""
+    from db.database import init_db
+    from db.models import Account
+    init_db()
 
-    tm = TokenManager()
-    info = tm.status()
-
-    if not info:
-        console.print("[yellow]Not authenticated.[/yellow] Run: tiktok-analytics auth login")
+    accounts = Account.select()
+    if not accounts:
+        console.print("[yellow]No accounts connected.[/yellow] Run: tiktok-analytics auth login")
         return
 
-    access_status = "[green]valid[/green]" if info["access_valid"] else "[red]expired[/red]"
-    access_hours = info["access_expires_in"] // 3600
-    refresh_days = info["refresh_expires_in"] // 86400
+    table = Table(title="Connected Accounts")
+    table.add_column("ID", justify="right")
+    table.add_column("Name")
+    table.add_column("Username")
+    table.add_column("Primary")
 
-    console.print(Panel(
-        f"Open ID: {info['open_id']}\n"
-        f"Scopes: {info['scope']}\n"
-        f"Access token: {access_status} ({access_hours}h remaining)\n"
-        f"Refresh token: {refresh_days} days remaining",
-        title="Auth Status",
-    ))
+    for a in accounts:
+        primary = "[green]yes[/green]" if a.is_primary else ""
+        table.add_row(str(a.id), a.display_name, f"@{a.username or '-'}", primary)
 
-
-@auth.command()
-def refresh():
-    """Force-refresh the access token."""
-    from auth.token_manager import TokenManager
-
-    tm = TokenManager()
-    try:
-        tm.refresh()
-        console.print("[green]Token refreshed successfully.[/green]")
-    except Exception as e:
-        console.print(f"[red]Refresh failed:[/red] {e}")
+    console.print(table)
 
 
 @auth.command()
-def logout():
-    """Revoke tokens and log out."""
+def status():
+    """Show authentication status for all accounts."""
     from auth.token_manager import TokenManager
+    from db.database import init_db
+    from db.models import Account
+    init_db()
 
     tm = TokenManager()
-    tm.revoke()
-    console.print("[green]Logged out. Tokens revoked and deleted.[/green]")
+    account_ids = tm.list_account_ids()
+
+    if not account_ids:
+        console.print("[yellow]No accounts connected.[/yellow]")
+        return
+
+    for aid in account_ids:
+        info = tm.status(aid)
+        account = Account.get_or_none(Account.id == aid)
+        name = account.display_name if account else f"Account {aid}"
+
+        access_status = "[green]valid[/green]" if info["access_valid"] else "[red]expired[/red]"
+        access_hours = info["access_expires_in"] // 3600
+        refresh_days = info["refresh_expires_in"] // 86400
+        primary = " [cyan](primary)[/cyan]" if account and account.is_primary else ""
+
+        console.print(Panel(
+            f"Access token: {access_status} ({access_hours}h remaining)\n"
+            f"Refresh token: {refresh_days} days remaining",
+            title=f"{name}{primary}",
+        ))
+
+
+@auth.command("set-primary")
+@click.argument("account_id", type=int)
+def set_primary(account_id):
+    """Set an account as the primary account."""
+    from auth.token_manager import TokenManager
+    from db.database import init_db
+    init_db()
+
+    tm = TokenManager()
+    tm.set_primary(account_id)
+    console.print(f"[green]Account {account_id} set as primary.[/green]")
+
+
+@auth.command()
+@click.argument("account_id", type=int)
+def remove(account_id):
+    """Remove an account and its tokens."""
+    from auth.token_manager import TokenManager
+    from db.database import init_db
+    init_db()
+
+    tm = TokenManager()
+    tm.revoke(account_id)
+    console.print(f"[green]Account {account_id} removed.[/green]")
