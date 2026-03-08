@@ -19,7 +19,7 @@ def collect_now(account_id, all_accounts):
     """Run immediate one-time data collection."""
     from db.database import init_db
     from auth.token_manager import TokenManager
-    from tiktok_client.official_client import TikTokOfficialClient
+    from tiktok_client.web_client import TikTokWebClient
     from collectors.profile_collector import ProfileCollector
     from collectors.video_collector import VideoCollector
     from db.models import Account, CollectionLog
@@ -35,7 +35,7 @@ def collect_now(account_id, all_accounts):
     else:
         primary = tm.get_primary_id()
         if not primary:
-            console.print("[red]No accounts configured.[/red] Run: tiktok-analytics auth login")
+            console.print("[red]No accounts configured.[/red] Run: python -m cli.main auth login")
             raise SystemExit(1)
         account_ids = [primary]
 
@@ -47,13 +47,14 @@ def collect_now(account_id, all_accounts):
                 continue
 
             atm = TokenManager(account_id=aid)
-            if not atm.load(aid):
-                console.print(f"[red]No tokens for account {aid}.[/red]")
+            session_data = atm.load(aid)
+            if not session_data or "cookies" not in session_data:
+                console.print(f"[red]No session for account {aid}. Re-login required.[/red]")
                 continue
 
-            official = TikTokOfficialClient(atm)
-            profile_collector = ProfileCollector(account, official)
-            video_collector = VideoCollector(account, official)
+            web_client = TikTokWebClient(session_data["cookies"])
+            profile_collector = ProfileCollector(account, web_client)
+            video_collector = VideoCollector(account, web_client)
 
             log = CollectionLog.create(account=account, started_at=datetime.utcnow(), status="running")
 
@@ -79,7 +80,7 @@ def collect_now(account_id, all_accounts):
                 console.print(f"[red]Account {aid} failed:[/red] {e}")
 
             finally:
-                await official.close()
+                await web_client.close()
 
     asyncio.run(_collect())
 

@@ -145,7 +145,7 @@
         <h1>TikTok Analytics</h1>
         <div class="navbar-actions">
             <select id="account-select" onchange="switchAccount(this.value)" style="display:none;"></select>
-            <a href="/api/auth/login" class="btn btn-secondary" id="add-account-btn" style="display:none;">+ Add Account</a>
+            <a href="/login" class="btn btn-secondary" id="add-account-btn" style="display:none;">+ Add Account</a>
             <button class="btn btn-primary" onclick="collectData()" id="collect-btn" style="display:none;">Collect Data</button>
         </div>
     </nav>
@@ -156,7 +156,7 @@
             <h2>Welcome to TikTok Analytics</h2>
             <p>Connect your TikTok account to get started.</p>
             <br>
-            <a href="/api/auth/login" class="btn btn-primary">Connect TikTok Account</a>
+            <a href="/login" class="btn btn-primary">Connect TikTok Account</a>
         </div>
 
         <!-- Main app -->
@@ -229,7 +229,7 @@
                         <tbody id="accounts-table"></tbody>
                     </table>
                     <br>
-                    <a href="/api/auth/login" class="btn btn-primary">+ Connect Another Account</a>
+                    <a href="/login" class="btn btn-primary">+ Connect Another Account</a>
                 </div>
             </div>
         </div>

@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from tiktok_client.official_client import TikTokOfficialClient
+from tiktok_client.web_client import TikTokWebClient
 from tiktok_client.unofficial_client import TikTokUnofficialClient
 from db.models import Account, ProfileSnapshot
 from db.database import db
@@ -9,16 +9,18 @@ from db.database import db
 class ProfileCollector:
     """Collects and stores profile snapshots for a specific account."""
 
-    def __init__(self, account: Account, official: TikTokOfficialClient,
+    def __init__(self, account: Account, web_client: TikTokWebClient,
                  unofficial: TikTokUnofficialClient | None = None):
         self.account = account
-        self.official = official
+        self.web_client = web_client
         self.unofficial = unofficial
 
     async def collect(self) -> ProfileSnapshot:
         """Fetch profile data and save a snapshot."""
+        username = self.account.username or self.account.login_id
+
         try:
-            user = await self.official.get_user_info()
+            user = await self.web_client.get_user_info(username)
         except Exception as e:
             if self.unofficial:
                 user = await self.unofficial.get_user_info()
@@ -29,6 +31,11 @@ class ProfileCollector:
         self.account.display_name = user.get("display_name", "")
         self.account.username = user.get("username")
         self.account.avatar_url = user.get("avatar_url")
+        self.account.open_id = user.get("open_id", self.account.open_id or "")
+        # Store sec_uid for video listing
+        sec_uid = user.get("sec_uid")
+        if sec_uid:
+            self.account.sec_uid = sec_uid
         self.account.save()
 
         with db.atomic():

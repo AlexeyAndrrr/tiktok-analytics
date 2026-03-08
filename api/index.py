@@ -49,41 +49,46 @@ def login_page():
 
 # ── Auth API ───────────────────────────────────────────
 
-@app.route("/api/auth/login")
+@app.route("/api/auth/login", methods=["POST"])
 def auth_login():
-    """Start OAuth2 flow — redirect to TikTok."""
-    if not settings.TIKTOK_CLIENT_KEY or settings.TIKTOK_CLIENT_KEY == "your_client_key_here":
-        return jsonify({"error": "TIKTOK_CLIENT_KEY not configured"}), 500
+    """Log in with TikTok credentials via browser automation."""
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "JSON body required"}), 400
 
-    from auth.oauth_server import OAuthCallbackServer
-    server = OAuthCallbackServer()
-    session["code_verifier"] = server.code_verifier
-    session["oauth_state"] = server.state
-    return redirect(server.get_authorization_url())
+    login_id = data.get("login")
+    password = data.get("password")
 
+    if not login_id or not password:
+        return jsonify({"error": "Login and password are required"}), 400
 
-@app.route("/api/auth/callback")
-def auth_callback():
-    """Handle OAuth2 callback from TikTok."""
-    error = request.args.get("error")
-    if error:
-        return render_template("login.html", error=f"{error}: {request.args.get('error_description', '')}")
-
-    state = request.args.get("state")
-    if state != session.get("oauth_state"):
-        return render_template("login.html", error="State mismatch")
-
-    code = request.args.get("code")
-    if not code:
-        return render_template("login.html", error="No authorization code received")
-
+    from auth.browser_login import BrowserLogin, LoginError, CaptchaRequired, TwoFactorRequired, InvalidCredentials
     from auth.token_manager import TokenManager
-    tm = TokenManager()
+
+    bl = BrowserLogin()
     try:
-        tm.exchange_code(code, session.get("code_verifier", ""))
-        return redirect("/")
-    except Exception as e:
-        return render_template("login.html", error=str(e))
+        cookies = asyncio.run(bl.login(login_id, password, headless=True))
+    except CaptchaRequired:
+        return jsonify({
+            "error": "CAPTCHA detected. Use CLI with --no-headless: python -m cli.main auth login --no-headless"
+        }), 403
+    except TwoFactorRequired:
+        return jsonify({
+            "error": "2FA verification required. Use CLI with --no-headless."
+        }), 403
+    except InvalidCredentials as e:
+        return jsonify({"error": str(e)}), 401
+    except LoginError as e:
+        return jsonify({"error": str(e)}), 500
+
+    tm = TokenManager()
+    session_data = tm.store_session(login_id, cookies)
+
+    return jsonify({
+        "ok": True,
+        "account_id": session_data["account_id"],
+        "login_id": login_id,
+    })
 
 
 @app.route("/api/auth/status")
@@ -100,7 +105,7 @@ def auth_status():
 
 @app.route("/api/auth/logout", methods=["POST"])
 def auth_logout():
-    """Revoke current account tokens."""
+    """Remove account session."""
     account_id = request.json.get("account_id") if request.is_json else None
     from auth.token_manager import TokenManager
     tm = TokenManager(account_id=account_id)
@@ -118,7 +123,7 @@ def list_accounts():
     for a in accounts:
         result.append({
             "id": a.id,
-            "open_id": a.open_id,
+            "login_id": a.login_id or "",
             "display_name": a.display_name,
             "username": a.username or "",
             "avatar_url": a.avatar_url or "",
@@ -149,8 +154,7 @@ def remove_account(account_id):
 def collect_now():
     """Trigger data collection for a specific or all accounts."""
     from auth.token_manager import TokenManager
-    from tiktok_client.official_client import TikTokOfficialClient
-    from tiktok_client.unofficial_client import TikTokUnofficialClient
+    from tiktok_client.web_client import TikTokWebClient
     from collectors.profile_collector import ProfileCollector
     from collectors.video_collector import VideoCollector
 
@@ -167,15 +171,15 @@ def collect_now():
         return jsonify({"error": "Account not found"}), 404
 
     tm = TokenManager(account_id=account_id)
-    if not tm.load():
-        return jsonify({"error": "Not authenticated"}), 401
+    session_data = tm.load()
+    if not session_data or "cookies" not in session_data:
+        return jsonify({"error": "Not authenticated. Please log in again."}), 401
 
     async def _collect():
-        official = TikTokOfficialClient(tm)
-        unofficial = None
+        web_client = TikTokWebClient(session_data["cookies"])
 
-        profile_collector = ProfileCollector(account, official, unofficial)
-        video_collector = VideoCollector(account, official, unofficial)
+        profile_collector = ProfileCollector(account, web_client)
+        video_collector = VideoCollector(account, web_client)
 
         log = CollectionLog.create(account=account, started_at=datetime.utcnow(), status="running")
 
@@ -202,7 +206,7 @@ def collect_now():
             log.save()
             return {"status": "failed", "error": str(e)}
         finally:
-            await official.close()
+            await web_client.close()
 
     result = asyncio.run(_collect())
     status_code = 200 if result["status"] == "success" else 500

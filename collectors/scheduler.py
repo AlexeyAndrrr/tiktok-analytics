@@ -6,7 +6,7 @@ from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
 from auth.token_manager import TokenManager
-from tiktok_client.official_client import TikTokOfficialClient
+from tiktok_client.web_client import TikTokWebClient
 from tiktok_client.unofficial_client import TikTokUnofficialClient
 from collectors.profile_collector import ProfileCollector
 from collectors.video_collector import VideoCollector
@@ -46,11 +46,21 @@ async def _async_collect(account_id: int):
         logger.error(f"Account {account_id} not found in DB")
         return
 
-    official = TikTokOfficialClient(token_manager)
+    # Load session cookies
+    session_data = token_manager.load(account_id)
+    if not session_data or "cookies" not in session_data:
+        logger.error(f"Account {account_id}: no session cookies. Re-login required.")
+        return
+
+    if not token_manager.is_session_valid(account_id):
+        logger.warning(f"Account {account_id}: session expired. Re-login required.")
+        return
+
+    web_client = TikTokWebClient(session_data["cookies"])
     unofficial = TikTokUnofficialClient(account.username or "") if account.username else None
 
-    profile_collector = ProfileCollector(account, official, unofficial)
-    video_collector = VideoCollector(account, official, unofficial)
+    profile_collector = ProfileCollector(account, web_client, unofficial)
+    video_collector = VideoCollector(account, web_client, unofficial)
 
     log = CollectionLog.create(
         account=account,
@@ -81,7 +91,7 @@ async def _async_collect(account_id: int):
         logger.error(f"[Account {account_id}] Collection failed: {e}")
 
     finally:
-        await official.close()
+        await web_client.close()
         if unofficial:
             await unofficial.close()
 

@@ -1,3 +1,5 @@
+import asyncio
+
 import click
 from rich.console import Console
 from rich.panel import Panel
@@ -13,36 +15,50 @@ def auth():
 
 
 @auth.command()
-def login():
-    """Add a new TikTok account via OAuth2."""
-    from config import settings
-
-    if not settings.TIKTOK_CLIENT_KEY or settings.TIKTOK_CLIENT_KEY == "your_client_key_here":
-        console.print("[red]Error:[/red] Set TIKTOK_CLIENT_KEY and TIKTOK_CLIENT_SECRET in .env file")
-        raise SystemExit(1)
-
-    from auth.oauth_server import OAuthCallbackServer
+@click.option("--headless/--no-headless", default=False,
+              help="Run browser in headless mode (use --no-headless for CAPTCHA)")
+def login(headless):
+    """Add a TikTok account by logging in with credentials."""
+    from auth.browser_login import BrowserLogin, CaptchaRequired, TwoFactorRequired, InvalidCredentials
     from auth.token_manager import TokenManager
     from db.database import init_db
     init_db()
 
-    server = OAuthCallbackServer()
-    console.print("[blue]Opening browser for TikTok authorization...[/blue]")
+    login_id = click.prompt("TikTok email, phone, or username")
+    password = click.prompt("Password", hide_input=True)
 
-    auth_code, error = server.start_and_wait()
-    if error:
-        console.print(f"[red]Authorization failed:[/red] {error}")
+    console.print("\n[blue]Opening browser for TikTok login...[/blue]")
+    if not headless:
+        console.print("[dim]A browser window will open. Complete any CAPTCHA if prompted.[/dim]")
+    else:
+        console.print("[dim]Running in headless mode. Use --no-headless if CAPTCHA appears.[/dim]")
+
+    bl = BrowserLogin()
+    try:
+        cookies = asyncio.run(bl.login(login_id, password, headless=headless))
+    except CaptchaRequired:
+        console.print("\n[yellow]CAPTCHA detected.[/yellow] Re-run with [bold]--no-headless[/bold] to solve it manually:")
+        console.print("  [dim]python -m cli.main auth login --no-headless[/dim]")
+        raise SystemExit(1)
+    except TwoFactorRequired:
+        console.print("\n[yellow]2FA verification required.[/yellow] Re-run with [bold]--no-headless[/bold]:")
+        console.print("  [dim]python -m cli.main auth login --no-headless[/dim]")
+        raise SystemExit(1)
+    except InvalidCredentials as e:
+        console.print(f"\n[red]Login failed:[/red] {e}")
+        raise SystemExit(1)
+    except Exception as e:
+        console.print(f"\n[red]Login error:[/red] {e}")
         raise SystemExit(1)
 
     tm = TokenManager()
-    tokens = tm.exchange_code(auth_code, server.code_verifier)
+    session_data = tm.store_session(login_id, cookies)
 
     console.print(Panel(
         f"[green]Account added![/green]\n"
-        f"Account ID: {tokens.get('account_id')}\n"
-        f"Open ID: {tokens['open_id']}\n"
-        f"Scopes: {tokens['scope']}",
-        title="Authentication Complete",
+        f"Account ID: {session_data['account_id']}\n"
+        f"Login: {login_id}",
+        title="Login Complete",
     ))
 
 
@@ -55,25 +71,32 @@ def list_accounts():
 
     accounts = Account.select()
     if not accounts:
-        console.print("[yellow]No accounts connected.[/yellow] Run: tiktok-analytics auth login")
+        console.print("[yellow]No accounts connected.[/yellow] Run: python -m cli.main auth login")
         return
 
     table = Table(title="Connected Accounts")
     table.add_column("ID", justify="right")
     table.add_column("Name")
     table.add_column("Username")
+    table.add_column("Login")
     table.add_column("Primary")
 
     for a in accounts:
         primary = "[green]yes[/green]" if a.is_primary else ""
-        table.add_row(str(a.id), a.display_name, f"@{a.username or '-'}", primary)
+        table.add_row(
+            str(a.id),
+            a.display_name,
+            f"@{a.username or '-'}",
+            a.login_id or "-",
+            primary,
+        )
 
     console.print(table)
 
 
 @auth.command()
 def status():
-    """Show authentication status for all accounts."""
+    """Show session status for all accounts."""
     from auth.token_manager import TokenManager
     from db.database import init_db
     from db.models import Account
@@ -91,14 +114,14 @@ def status():
         account = Account.get_or_none(Account.id == aid)
         name = account.display_name if account else f"Account {aid}"
 
-        access_status = "[green]valid[/green]" if info["access_valid"] else "[red]expired[/red]"
-        access_hours = info["access_expires_in"] // 3600
-        refresh_days = info["refresh_expires_in"] // 86400
+        session_status = "[green]valid[/green]" if info["session_valid"] else "[red]expired[/red]"
         primary = " [cyan](primary)[/cyan]" if account and account.is_primary else ""
 
         console.print(Panel(
-            f"Access token: {access_status} ({access_hours}h remaining)\n"
-            f"Refresh token: {refresh_days} days remaining",
+            f"Session: {session_status}\n"
+            f"Login: {info.get('login_id', '-')}\n"
+            f"Stored: {info['stored_hours_ago']}h ago\n"
+            f"Cookies: {info['cookies_count']}",
             title=f"{name}{primary}",
         ))
 
@@ -119,7 +142,7 @@ def set_primary(account_id):
 @auth.command()
 @click.argument("account_id", type=int)
 def remove(account_id):
-    """Remove an account and its tokens."""
+    """Remove an account and its session data."""
     from auth.token_manager import TokenManager
     from db.database import init_db
     init_db()

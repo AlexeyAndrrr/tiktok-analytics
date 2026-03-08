@@ -13,9 +13,11 @@ class BaseModel(Model):
 
 class Account(BaseModel):
     id = AutoField()
-    open_id = CharField(unique=True)
+    open_id = CharField(default="", index=True)
+    login_id = CharField(unique=True, default="")
     display_name = CharField(default="")
-    username = CharField(null=True)
+    username = CharField(null=True, index=True)
+    sec_uid = CharField(null=True)
     avatar_url = CharField(null=True)
     is_primary = BooleanField(default=False)
     added_at = DateTimeField(default=datetime.utcnow)
