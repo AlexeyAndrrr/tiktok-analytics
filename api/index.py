@@ -62,24 +62,25 @@ def auth_login():
     if not login_id or not password:
         return jsonify({"error": "Login and password are required"}), 400
 
-    from auth.browser_login import BrowserLogin, LoginError, CaptchaRequired, TwoFactorRequired, InvalidCredentials
+    from auth.browser_login import run_login_sync, LoginError, CaptchaRequired, TwoFactorRequired, InvalidCredentials
     from auth.token_manager import TokenManager
 
-    bl = BrowserLogin()
     try:
-        cookies = asyncio.run(bl.login(login_id, password, headless=True))
+        cookies = run_login_sync(login_id, password, headless=False, timeout=120)
     except CaptchaRequired:
         return jsonify({
-            "error": "CAPTCHA detected. Use CLI with --no-headless: python -m cli.main auth login --no-headless"
+            "error": "CAPTCHA detected. Use CLI: python -m cli.main auth login --no-headless"
         }), 403
     except TwoFactorRequired:
         return jsonify({
-            "error": "2FA verification required. Use CLI with --no-headless."
+            "error": "2FA verification required. Use CLI: python -m cli.main auth login --no-headless"
         }), 403
     except InvalidCredentials as e:
         return jsonify({"error": str(e)}), 401
     except LoginError as e:
         return jsonify({"error": str(e)}), 500
+    except Exception as e:
+        return jsonify({"error": f"Unexpected error: {e}"}), 500
 
     tm = TokenManager()
     session_data = tm.store_session(login_id, cookies)

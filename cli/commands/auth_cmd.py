@@ -1,5 +1,3 @@
-import asyncio
-
 import click
 from rich.console import Console
 from rich.panel import Panel
@@ -19,7 +17,7 @@ def auth():
               help="Run browser in headless mode (use --no-headless for CAPTCHA)")
 def login(headless):
     """Add a TikTok account by logging in with credentials."""
-    from auth.browser_login import BrowserLogin, CaptchaRequired, TwoFactorRequired, InvalidCredentials
+    from auth.browser_login import run_login_sync, CaptchaRequired, TwoFactorRequired, InvalidCredentials
     from auth.token_manager import TokenManager
     from db.database import init_db
     init_db()
@@ -33,9 +31,8 @@ def login(headless):
     else:
         console.print("[dim]Running in headless mode. Use --no-headless if CAPTCHA appears.[/dim]")
 
-    bl = BrowserLogin()
     try:
-        cookies = asyncio.run(bl.login(login_id, password, headless=headless))
+        cookies = run_login_sync(login_id, password, headless=headless)
     except CaptchaRequired:
         console.print("\n[yellow]CAPTCHA detected.[/yellow] Re-run with [bold]--no-headless[/bold] to solve it manually:")
         console.print("  [dim]python -m cli.main auth login --no-headless[/dim]")

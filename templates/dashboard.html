@@ -458,21 +458,27 @@
             formEl.style.display = 'none';
             loadingEl.style.display = 'block';
 
-            const resp = await fetch('/api/auth/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ login: loginVal, password: passVal }),
-            });
-            const data = await resp.json();
+            try {
+                const resp = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ login: loginVal, password: passVal }),
+                });
+                const data = await resp.json();
 
-            if (resp.ok && data.ok) {
-                loadingEl.style.display = 'none';
-                // Reload accounts and fill this slot
-                await init();
-            } else {
+                if (resp.ok && data.ok) {
+                    loadingEl.style.display = 'none';
+                    await init();
+                } else {
+                    loadingEl.style.display = 'none';
+                    formEl.style.display = 'block';
+                    errorEl.textContent = data.error || 'Login failed';
+                    errorEl.style.display = 'block';
+                }
+            } catch (err) {
                 loadingEl.style.display = 'none';
                 formEl.style.display = 'block';
-                errorEl.textContent = data.error || 'Login failed';
+                errorEl.textContent = 'Connection error: ' + err.message;
                 errorEl.style.display = 'block';
             }
         }
